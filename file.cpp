@@ -2,12 +2,16 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <map>
+#include <vector>
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <unistd.h>
 #include <filesystem>
 #include <thread>
+#include <mutex>
 #include <chrono>
 
 // Socket Programming Headers
@@ -32,6 +36,15 @@ void handle_client(Client);
 
 int client_id, _PORT, unique_id;
 
+std::vector<std::string> my_files;
+std::vector<std::string> required_files;
+std::vector<int> neighbors;
+
+std::map<std::string, std::map<int, bool>> m;
+
+std::mutex stdout_mtx;
+std::mutex map_mtx;
+
 int main(int argc, char** argv) {
 	std::ifstream config_file(argv[1]);
 	std::filesystem::path directory_path(argv[2]);
@@ -41,7 +54,9 @@ int main(int argc, char** argv) {
 		std::cout << "List of entries in the directory: " << std::endl;
 #endif
 	for (const std::filesystem::directory_entry& dir_entry : std::filesystem::directory_iterator(directory_path)) {
-		std::cout << dir_entry.path().string() << std::endl;
+		std::string filename = dir_entry.path().string();
+		std::cout << filename << std::endl;
+		my_files.push_back(filename);
 	}
 #ifdef DEBUG
 		std::cout << "=======================================\n";
@@ -62,10 +77,23 @@ int main(int argc, char** argv) {
 	for (int _t = 0; _t < num_immediate_neigh; ++_t) {
 		int id, port;
 		config_file >> id >> port;
+		neighbors.push_back(id);
 #ifdef DEBUG
 		printf("Spawning a thread to connect to %d on port %d\n", id, port);
 #endif
 		std::thread(act_as_client, id, port).detach();
+	}
+
+	int num_required_files;
+	config_file >> num_required_files;
+
+	for (int _t = 0; _t < num_required_files; ++_t) {
+		std::string s; config_file >> s;
+		required_files.push_back(s);
+		std::map<int, bool> temp;
+
+		for (int neigh : neighbors) temp.insert(std::make_pair(neigh, false));
+		m.insert(std::make_pair(s, temp));
 	}
 
 	while (1);
@@ -126,16 +154,73 @@ void act_as_client(int id, int port) {
 	// The unique id would be padded to 10 bytes
 	recv(client_sockfd, (void*)recv_buffer, 10, 0);
 	printf("Connected to %d with unique-ID %s on port %d\n", id, recv_buffer, port);
+
+
+	// Task 2. Send the list of files that are needed
+	// separated by a \n character
+	std::string concat_filenames;
+
+	for (std::string s : required_files) concat_filenames += (s + "\n");
+
+	send(client_sockfd, (void*)concat_filenames.c_str(), concat_filenames.size(), 0);
+	
+	std::memset((void*)recv_buffer, 0, MAX_BUF_SIZE);
+	recv(client_sockfd, (void*)recv_buffer, MAX_BUF_SIZE, 0);
+	// received from server, whether files are present at the server
+	std::string s(recv_buffer);
+	map_mtx.lock();
+	// update the map
+	int i = 0, j = 0;
+	while (i < s.length()) {
+		if (s[i] == '\n') {
+			std::string result = s.substr(j, i - j);
+			for (int t = 0; t < result.length(); ++t)
+				if (result[t] == ' ')
+					if (result.substr(t + 1) == "YES")
+						m[result.substr(0, t)][id] = true;
+		} else ++i;
+	}
+	map_mtx.unlock();
 }
 
 void handle_client(Client client) {
 	char send_buffer[MAX_BUF_SIZE] = { };
+	char recv_buffer[MAX_BUF_SIZE] = { };
+
 	// Task 1. Send Unique ID padded to 10 bytes
 	std::stringstream ss;
 	ss << unique_id;
 	std::string unique_id_str = ss.str();
 	
 	std::strcpy(send_buffer, unique_id_str.c_str());
-
 	send(client.conn_sockfd, send_buffer, 10, 0);
+
+	std::memset((void*)recv_buffer, 0, MAX_BUF_SIZE);
+	int recv_size = recv(client.conn_sockfd, recv_buffer, 1000, 0);
+
+	std::string s = std::string(recv_buffer);
+
+	// parse the received filenames
+	std::vector<std::string> filenames;
+	// delimiter = \n
+	int i = 0, j = 0;
+
+	while (i < recv_size) {
+		if (s[i] == 0) break;
+		else if (s[i] == '\n') {
+			filenames.push_back(s.substr(j, i - j));
+			++i;
+			j = i;
+		} else ++i;
+	}
+	
+	std::stringstream temp;
+	for (std::string file : filenames)
+		if (std::find(my_files.begin(), my_files.end(), file) != my_files.end())
+			temp << file << " YES\n";
+		else 
+			temp << file << " NO\n";
+	std::string send_stuff = temp.str();
+	send(client.conn_sockfd, (void*)send_stuff.c_str(), send_stuff.size(), 0);
 }
+
