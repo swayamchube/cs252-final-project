@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <thread>
 #include <chrono>
+#include <atomic>
 
 // Socket Programming Headers
 #include <sys/socket.h>
@@ -20,6 +21,8 @@
 #define MAX_BUF_SIZE 1024
 #define DATA_SIZE 100 // read 100 bytes at a time (atmost)
 #define MAX_BACKLOG 3
+
+std::atomic<int> count{0};
 
 struct Client {
 	int conn_sockfd;
@@ -41,7 +44,7 @@ int main(int argc, char** argv) {
 		std::cout << "List of entries in the directory: " << std::endl;
 #endif
 	for (const std::filesystem::directory_entry& dir_entry : std::filesystem::directory_iterator(directory_path)) {
-		std::cout << dir_entry.path().string() << std::endl;
+		std::cout << dir_entry.path().filename().string() << std::endl;
 	}
 #ifdef DEBUG
 		std::cout << "=======================================\n";
@@ -68,7 +71,7 @@ int main(int argc, char** argv) {
 		std::thread(act_as_client, id, port).detach();
 	}
 
-	while (1);
+	while (count < 2 * num_immediate_neigh);
 }
 
 void act_as_server() {
@@ -126,6 +129,8 @@ void act_as_client(int id, int port) {
 	// The unique id would be padded to 10 bytes
 	recv(client_sockfd, (void*)recv_buffer, 10, 0);
 	printf("Connected to %d with unique-ID %s on port %d\n", id, recv_buffer, port);
+
+	count++;
 }
 
 void handle_client(Client client) {
@@ -138,4 +143,6 @@ void handle_client(Client client) {
 	std::strcpy(send_buffer, unique_id_str.c_str());
 
 	send(client.conn_sockfd, send_buffer, 10, 0);
+
+	count++;
 }
