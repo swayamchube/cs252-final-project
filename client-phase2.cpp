@@ -146,8 +146,8 @@ int main(int argc, char** argv) {
 
 void act_as_server() {
 	int server_sockfd = socket(PF_INET, SOCK_STREAM, 0);
-	int _val = 0;
-	setsockopt(server_sockfd, SOL_SOCKET, SO_REUSEADDR, &_val, 1);
+	int _val = 1;
+	setsockopt(server_sockfd, SOL_SOCKET, SO_REUSEADDR, &_val, sizeof(int));
 
 	struct sockaddr_in server_addr;
 	std::memset((void*)&server_addr, 0, sizeof(struct sockaddr_in));
@@ -157,7 +157,7 @@ void act_as_server() {
 	server_addr.sin_port = htons(_PORT);
 
 	if (bind(server_sockfd, (const struct sockaddr*)&server_addr, sizeof(struct sockaddr)) == -1) {
-		std::cerr << "Line __LINE__: Unable to bind on port " << _PORT << std::endl;
+		std::cerr << "Line " << __LINE__ << ": Unable to bind on port " << _PORT << std::endl;
 		exit(1);
 	}
 
