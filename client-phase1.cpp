@@ -2,6 +2,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <vector>
+#include <string>
+#include <map>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -17,6 +20,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <asm-generic/socket.h>
 
 #define MAX_BUF_SIZE 1024
 #define DATA_SIZE 100 // read 100 bytes at a time (atmost)
@@ -24,16 +28,19 @@
 
 std::atomic<int> count{0};
 
+std::map<int, int> neighbors;
+
 struct Client {
 	int conn_sockfd;
 	struct sockaddr_in client_addr;
 };
 
 void act_as_server();
-void act_as_client(int, int);
+void act_as_client();
 void handle_client(Client);
 
 int client_id, _PORT, unique_id;
+int num_immediate_neigh;
 
 int main(int argc, char** argv) {
 	std::ifstream config_file(argv[1]);
@@ -42,15 +49,14 @@ int main(int argc, char** argv) {
 #ifdef DEBUG
 		std::cout << "=======================================\n";
 		std::cout << "List of entries in the directory: " << std::endl;
-#endif
 	for (const std::filesystem::directory_entry& dir_entry : std::filesystem::directory_iterator(directory_path)) {
 		std::cout << dir_entry.path().filename().string() << std::endl;
 	}
+#endif
 #ifdef DEBUG
 		std::cout << "=======================================\n";
 #endif
 	
-	int num_immediate_neigh;
 	config_file >> client_id >> _PORT >> unique_id >> num_immediate_neigh;
 
 #ifdef DEBUG
@@ -60,22 +66,24 @@ int main(int argc, char** argv) {
 	std::cout << "Number of Immediate Neighbors: " << num_immediate_neigh << std::endl;
 #endif
 
-	std::thread(act_as_server).detach();
-
 	for (int _t = 0; _t < num_immediate_neigh; ++_t) {
 		int id, port;
 		config_file >> id >> port;
-#ifdef DEBUG
-		printf("Spawning a thread to connect to %d on port %d\n", id, port);
-#endif
-		std::thread(act_as_client, id, port).detach();
+		neighbors.insert(std::make_pair(id, port));
 	}
 
-	while (count < 2 * num_immediate_neigh);
+	std::thread server_thread(act_as_server);
+	std::thread client_thread(act_as_client);
+
+	server_thread.join();
+	client_thread.join();
 }
 
 void act_as_server() {
+	// Just setting up socket stuff
 	int server_sockfd = socket(PF_INET, SOCK_STREAM, 0);
+	int _val = 1;
+	setsockopt(server_sockfd, SOL_SOCKET, SO_REUSEPORT, &_val, sizeof(int));
 
 	struct sockaddr_in server_addr;
 	std::memset((void*)&server_addr, 0, sizeof(struct sockaddr_in));
@@ -90,8 +98,10 @@ void act_as_server() {
 	}
 
 	listen(server_sockfd, MAX_BACKLOG);
+	// done setting up socket stuff
+	int number_of_clients_connected = 0;
 
-	while (true) {
+	while (number_of_clients_connected < num_immediate_neigh) {
 		struct sockaddr_in client_addr;
 		socklen_t client_addr_len = sizeof(struct sockaddr);
 		int conn_sockfd = accept(server_sockfd, (struct sockaddr*)&client_addr, &client_addr_len);
@@ -102,47 +112,42 @@ void act_as_server() {
 		}
 
 		Client client = { conn_sockfd, client_addr };
-		std::thread(handle_client, client).detach();
+		char send_buffer[MAX_BUF_SIZE] = { };
+		// Task 1. Send Unique ID padded to 10 bytes
+		std::stringstream ss;
+		ss << unique_id;
+		std::string unique_id_str = ss.str();
+		std::strcpy(send_buffer, unique_id_str.c_str());
+		send(client.conn_sockfd, send_buffer, 10, 0);
+		number_of_clients_connected++;
 	}
 }
 
-void act_as_client(int id, int port) {
-	int client_sockfd = socket(PF_INET, SOCK_STREAM, 0);
+void act_as_client() {
+	for (std::pair<int, int> elem: neighbors) {
+		int client_sockfd = socket(PF_INET, SOCK_STREAM, 0);
+		int id = elem.first, port = elem.second;
 
-	struct sockaddr_in server_addr;
-	std::memset((void*)&server_addr, 0, sizeof(struct sockaddr_in));
+		struct sockaddr_in server_addr;
+		std::memset((void*)&server_addr, 0, sizeof(struct sockaddr_in));
 
-	server_addr.sin_family = AF_INET;
-	inet_aton("127.0.0.1", &server_addr.sin_addr);
-	server_addr.sin_port = htons(port);
+		server_addr.sin_family = AF_INET;
+		inet_aton("127.0.0.1", &server_addr.sin_addr);
+		server_addr.sin_port = htons(port);
 
-	while (connect(client_sockfd, (const struct sockaddr*)&server_addr, sizeof(struct sockaddr)) == -1) {
+		while (connect(client_sockfd, (const struct sockaddr*)&server_addr, sizeof(struct sockaddr)) == -1) {
 #ifdef DEBUG
-		std::cout << "Server on port " << port << " is not active\n";
+			std::cout << "Server on port " << port << " is not active\n";
 #endif
-		sleep(1);
+			sleep(1);
+		}
+
+		char recv_buffer[MAX_BUF_SIZE] { };
+
+		// Task 1. Receive Unique ID
+		// The unique id would be padded to 10 bytes
+		recv(client_sockfd, (void*)recv_buffer, 10, 0);
+		printf("Connected to %d with unique-ID %s on port %d\n", id, recv_buffer, port);
 	}
-
-	char recv_buffer[MAX_BUF_SIZE] { };
-
-	// Task 1. Receive Unique ID
-	// The unique id would be padded to 10 bytes
-	recv(client_sockfd, (void*)recv_buffer, 10, 0);
-	printf("Connected to %d with unique-ID %s on port %d\n", id, recv_buffer, port);
-
-	count++;
-}
-
-void handle_client(Client client) {
-	char send_buffer[MAX_BUF_SIZE] = { };
-	// Task 1. Send Unique ID padded to 10 bytes
-	std::stringstream ss;
-	ss << unique_id;
-	std::string unique_id_str = ss.str();
-	
-	std::strcpy(send_buffer, unique_id_str.c_str());
-
-	send(client.conn_sockfd, send_buffer, 10, 0);
-
 	count++;
 }
