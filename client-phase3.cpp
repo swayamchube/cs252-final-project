@@ -27,6 +27,7 @@
 #include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/select.h>
 
 #define MAX_BUF_SIZE 1024
 #define DATA_SIZE 100 // read 100 bytes at a time (atmost)
@@ -179,6 +180,17 @@ void act_as_server() {
 	while (true) {
 		struct sockaddr_in client_addr;
 		socklen_t client_addr_len = sizeof(struct sockaddr);
+
+		// TODO: Implement a Timeout Feature here using select()
+		fd_set readfs;
+		struct timeval tv;
+		tv.tv_sec = 7;
+		tv.tv_usec = 0;
+		FD_ZERO(&readfs);
+		FD_SET(server_sockfd, &readfs);
+
+		if (select(server_sockfd + 1, &readfs, NULL, NULL, &tv) == 0) return;
+
 		int conn_sockfd = accept(server_sockfd, (struct sockaddr*)&client_addr, &client_addr_len);
 
 		if (conn_sockfd == -1) {
