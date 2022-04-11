@@ -14,7 +14,7 @@ client-phase3: client-phase3.o
 	g++ build/client-phase3.o -o build/client-phase3 -lpthread
 
 client-phase3.o: client-phase3.cpp
-	g++ -c -std=c++17 -DDEBUG client-phase3.cpp -o build/client-phase3.o
+	g++ -c -std=c++17 client-phase3.cpp -o build/client-phase3.o
 
 clean:
 	rm build/*
