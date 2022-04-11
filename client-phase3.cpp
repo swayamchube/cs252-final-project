@@ -139,21 +139,28 @@ int main(int argc, char** argv) {
 	// sort required files lexicographically
 	std::sort(required_files.begin(), required_files.end());
 
-	for (auto x: required_files) {
-#ifdef DEBUG
-		std::cout << "Searching for file: " << x << ".\n";
-#endif
-		if (std::find(file_list.begin(), file_list.end(), x) != file_list.end()) 
-			std::printf("Found %s at 0 with MD5 0 at depth 0\n", x.c_str());
-		else if (m.find(x) != m.end())
-				std::printf("Found %s at %d with MD5 0 at depth 1\n", x.c_str(), m[x].front());
-	}
 
 	// need to send request for file here
 	std::thread file_requesting_thread(request_files);
 	file_requesting_thread.join();
 	
 	server_thread.join();
+
+	for (auto x: required_files) {
+		if (std::find(file_list.begin(), file_list.end(), x) != file_list.end()) {
+			printf("Found %s at 0 with MD5 0 at depth 0\n", x.c_str());
+		} 
+		else if (m.find(x) != m.end()) {
+			std::filesystem::path path_to_file = (directory_path/"Downloads")/x;
+			char buf[1024] = { };
+			char command[1024] = { };
+			std::sprintf(command, "md5sum %s", path_to_file.string().c_str());
+			std::FILE* fp = popen(command, "r");
+			fgets(buf, 32, fp);
+			buf[32] = 0;
+			printf("Found %s at %d with MD5 %s at depth 1\n", x.c_str(), m[x].front(), buf);
+		}
+	}
 }
 
 void act_as_server() {
@@ -181,7 +188,6 @@ void act_as_server() {
 		struct sockaddr_in client_addr;
 		socklen_t client_addr_len = sizeof(struct sockaddr);
 
-		// TODO: Implement a Timeout Feature here using select()
 		fd_set readfs;
 		struct timeval tv;
 		tv.tv_sec = 7;
@@ -232,11 +238,6 @@ void act_as_server() {
 #ifdef DEBUG
 			std::printf("Path to requested file is: %s\n", path_to_file.string().c_str());
 #endif
-			//std::FILE* input_file = std::fopen(path_to_file.string().c_str(), "r");
-			//std::fseek(input_file, 0, SEEK_END);
-			//std::size_t length = std::ftell(input_file);
-			//std::fseek(input_file, 0, SEEK_SET);
-
 			int input_file_fd = open(path_to_file.string().c_str(), O_RDONLY);
 			struct stat input_file_stats;
 			fstat(input_file_fd, &input_file_stats);
@@ -362,7 +363,6 @@ void request_files() {
 		output_file_path = output_file_path/x;
 		char temp[100];
 		std::sprintf(temp, "%s", output_file_path.string().c_str());
-		printf("Writing to file %s\n", temp);
 		// Receive the file 
 		std::ofstream output_file(temp);
 
