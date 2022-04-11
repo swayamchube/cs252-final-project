@@ -1,2 +1,5 @@
-client-phase1
-client-phase1.o
+build/
+files/
+*-config.txt
+output*
+
