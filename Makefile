@@ -20,7 +20,13 @@ client-phase4: client-phase4.o
 	g++ build/client-phase4.o -o build/client-phase4 -lpthread
 
 client-phase4.o: client-phase4.cpp
-	g++ -c -std=c++17 -DDEBUG client-phase4.cpp -o build/client-phase4.o
+	g++ -c -std=c++17 client-phase4.cpp -o build/client-phase4.o
+
+client-phase5: client-phase5.o
+	g++ build/client-phase5.o -o build/client-phase5 -lpthread
+
+client-phase5.o: client-phase5.cpp
+	g++ -c -std=c++17 client-phase5.cpp -o build/client-phase5.o
 
 clean:
 	rm build/*
