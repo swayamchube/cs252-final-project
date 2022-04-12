@@ -35,6 +35,8 @@ std::atomic<int> count{0};
 std::map<int, int> neighbors;
 // TODO: This
 std::mutex ostream_mux;
+std::atomic<int> phase_1_count{0};
+std::atomic<int> phase_2_count{0};
 
 std::map<int, int> unique_id_to_port;
 
@@ -144,6 +146,7 @@ int main(int argc, char** argv) {
 	std::cout << "=======================================\n";
 #endif
 
+	while (phase_1_count < num_immediate_neigh);
 	std::thread client_thread_depth_2(act_as_client_depth_2);
 	client_thread_depth_2.join();
 
@@ -153,6 +156,8 @@ int main(int argc, char** argv) {
 	for (auto elem: m2)
 		std::sort(elem.second.begin(), elem.second.end());
 	std::sort(required_files.begin(), required_files.end());
+
+	while (phase_2_count < num_immediate_neigh);
 
 	std::thread request_files_thread(request_files);
 	request_files_thread.join();
@@ -233,6 +238,7 @@ void act_as_server() {
 			// Task 2. Send the list of files to client
 			std::strcpy(send_buffer, file_list_string.c_str());
 			send(conn_sockfd, send_buffer, strlen(send_buffer), 0);
+			phase_1_count++;
 		}
 		else if (recv_buffer[0] == '2') {
 #ifdef DEBUG
@@ -242,17 +248,7 @@ void act_as_server() {
 #ifdef DEBUG
 			std::printf("received_bytes = %d\n", received_bytes);
 #endif
-#ifdef DEBUG
-			std::cout << "=======================================\n";
-			std::cout << "Printing the received buffer:\n";
-			for (int i = 0; i < 1024; ++i) {
-				if (recv_buffer[i] == 0) std::cout << 0;
-				else std::cout << recv_buffer[i];
-			}
-			std::cout << "=======================================\n";
-#endif
 			std::string flattened_map(recv_buffer);
-			
 #ifdef DEBUG
 			std::cout << "=======================================\n";
 			std::cout << "Flattened map received from user:\n";
@@ -277,20 +273,15 @@ void act_as_server() {
 					std::vector<int> v;
 					m2[filename] = v;
 				}
-#ifdef DEBUG
-				std::printf("temp.size() = %d\n", temp.size());
-#endif
 				for (int i = 0; i < temp.size(); i += 2) {
 					int _uid = std::stoi(temp[i]);
-#ifdef DEBUG
-					std::printf("i = %d\n", i);
-#endif
 					int _port = std::stoi(temp[i + 1]);
 					if (unique_id_to_port.find(_uid) == unique_id_to_port.end()) unique_id_to_port.insert(std::make_pair(_uid, _port));
 					m2[filename].push_back(_uid);
 				}
 			}
 			close(conn_sockfd);
+			phase_2_count++;
 		}
 		else if (recv_buffer[0] == '3') {
 #ifdef DEBUG
@@ -479,9 +470,6 @@ void request_files() {
 			printf("String sent to server on port %d is %s\n", port, send_buffer);
 #endif
 			int __len__ = send(client_sockfd, (void*)send_buffer, 100, 0);
-#ifdef DEBUG
-			std::printf("len = %d\n", __len__);
-#endif
 
 			std::filesystem::path output_file_path = directory_path/"Downloads";
 			mkdir(output_file_path.string().c_str(), S_IRWXU);
@@ -519,7 +507,7 @@ void request_files() {
 			int server_unique_id = m2[x].front();
 			int port = unique_id_to_port[server_unique_id];
 #ifdef DEBUG
-			printf("Trying to request files from server on port %d\n", port);
+			printf("Trying to request file %s from server on port %d\n", x.c_str(), port);
 #endif
 			int client_sockfd = socket(PF_INET, SOCK_STREAM, 0);
 
