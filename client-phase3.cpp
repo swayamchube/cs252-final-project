@@ -151,7 +151,7 @@ int main(int argc, char** argv) {
 			printf("Found %s at 0 with MD5 0 at depth 0\n", x.c_str());
 		} 
 		else if (m.find(x) != m.end()) {
-			std::filesystem::path path_to_file = (directory_path/"Downloads")/x;
+			std::filesystem::path path_to_file = (directory_path/"Downloaded")/x;
 			char buf[1024] = { };
 			char command[1024] = { };
 			std::sprintf(command, "md5sum %s", path_to_file.string().c_str());
@@ -358,7 +358,7 @@ void request_files() {
 #endif
 		send(client_sockfd, (void*)send_buffer, 100, 0);
 		
-		std::filesystem::path output_file_path = directory_path/"Downloads";
+		std::filesystem::path output_file_path = directory_path/"Downloaded";
 		mkdir(output_file_path.string().c_str(), S_IRWXU);
 		output_file_path = output_file_path/x;
 		char temp[100];

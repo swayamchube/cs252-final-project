@@ -169,11 +169,11 @@ int main(int argc, char** argv) {
 		if (std::find(file_list.begin(), file_list.end(), x) != file_list.end()) 
 			std::printf("Found %s at 0 with MD5 0 at depth 0\n", x.c_str());
 		else if (m.find(x) != m.end()) {
-			std::filesystem::path path_to_file = (directory_path/"Downloads")/x;
+			std::filesystem::path path_to_file = (directory_path/"Downloaded")/x;
 			std::printf("Found %s at %d with MD5 %s at depth 1\n", x.c_str(), m[x].front(), calculate_md5(path_to_file).c_str());
 		}
 		else if (m2.find(x) != m2.end()) {
-			std::filesystem::path path_to_file = (directory_path/"Downloads")/x;
+			std::filesystem::path path_to_file = (directory_path/"Downloaded")/x;
 			std::printf("Found %s at %d with MD5 %s at depth 2\n", x.c_str(), m2[x].front(), calculate_md5(path_to_file).c_str());
 		}
 	}
@@ -471,7 +471,7 @@ void request_files() {
 #endif
 			int __len__ = send(client_sockfd, (void*)send_buffer, 100, 0);
 
-			std::filesystem::path output_file_path = directory_path/"Downloads";
+			std::filesystem::path output_file_path = directory_path/"Downloaded";
 			mkdir(output_file_path.string().c_str(), S_IRWXU);
 			output_file_path = output_file_path/x;
 			char temp[100];
@@ -533,7 +533,7 @@ void request_files() {
 #endif
 			send(client_sockfd, (void*)send_buffer, 100, 0);
 
-			std::filesystem::path output_file_path = directory_path/"Downloads";
+			std::filesystem::path output_file_path = directory_path/"Downloaded";
 			mkdir(output_file_path.string().c_str(), S_IRWXU);
 			output_file_path = output_file_path/x;
 			char temp[100];

@@ -145,7 +145,7 @@ int main(int argc, char** argv) {
 void act_as_server() {
 	int server_sockfd = socket(PF_INET, SOCK_STREAM, 0);
 	int _val = 1;
-	setsockopt(server_sockfd, SOL_SOCKET, SO_REUSEADDR, &_val, sizeof(int));
+	setsockopt(server_sockfd, SOL_SOCKET, SO_REUSEPORT, &_val, sizeof(int));
 
 	struct sockaddr_in server_addr;
 	std::memset((void*)&server_addr, 0, sizeof(struct sockaddr_in));

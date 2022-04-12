@@ -46,17 +46,10 @@ int main(int argc, char** argv) {
 	std::ifstream config_file(argv[1]);
 	std::filesystem::path directory_path(argv[2]);
 
-#ifdef DEBUG
-		std::cout << "=======================================\n";
-		std::cout << "List of entries in the directory: " << std::endl;
 	for (const std::filesystem::directory_entry& dir_entry : std::filesystem::directory_iterator(directory_path)) {
-		std::cout << dir_entry.path().filename().string() << std::endl;
+		std::cout << dir_entry.path().filename().string() << "\n";
 	}
-#endif
-#ifdef DEBUG
-		std::cout << "=======================================\n";
-#endif
-	
+
 	config_file >> client_id >> _PORT >> unique_id >> num_immediate_neigh;
 
 #ifdef DEBUG
