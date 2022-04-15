@@ -31,4 +31,4 @@ client-phase5.o: client-phase5.cpp
 	g++ -c -std=c++17 client-phase5.cpp -o client-phase5.o
 
 clean:
-	rm *
+	rm *.o
