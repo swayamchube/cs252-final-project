@@ -57,16 +57,14 @@ int main(int argc, char** argv) {
 	std::ifstream config_file(argv[1]);
 	std::filesystem::path directory_path(argv[2]);
 
-#ifdef DEBUG
-		std::cout << "=======================================\n";
-		std::cout << "List of entries in the directory: " << std::endl;
-#endif
 	for (const std::filesystem::directory_entry& dir_entry : std::filesystem::directory_iterator(directory_path)) {
-		file_list.push_back(dir_entry.path().filename().string());
+		if (dir_entry.path().filename().string() != "Downloaded")
+			file_list.push_back(dir_entry.path().filename().string());
 	}
-#ifdef DEBUG
-		std::cout << "=======================================\n";
-#endif
+	std::sort(file_list.begin(), file_list.end());
+
+	for (auto s: file_list) std::cout << s << "\n";
+
 	for (auto s : file_list) 
 		file_list_string += (s + " ");
 #ifdef DEBUG
@@ -215,9 +213,7 @@ void act_as_client() {
 		recv(client_sockfd, (void*)recv_buffer, 10, 0);
 
 		int server_unique_id = std::stoi(recv_buffer);
-#ifdef DEBUG
-		printf("Connected to %d with unique-ID (after typecasting) %d on port %d\n", id, server_unique_id, port);
-#endif
+		printf("Connected to %d with unique-ID %d on port %d\n", id, server_unique_id, port);
 
 		recv(client_sockfd, (void*)recv_buffer, 1000, 0);
 

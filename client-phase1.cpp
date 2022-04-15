@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -29,6 +30,7 @@
 std::atomic<int> count{0};
 
 std::map<int, int> neighbors;
+std::vector<std::string> file_list;
 
 struct Client {
 	int conn_sockfd;
@@ -47,8 +49,12 @@ int main(int argc, char** argv) {
 	std::filesystem::path directory_path(argv[2]);
 
 	for (const std::filesystem::directory_entry& dir_entry : std::filesystem::directory_iterator(directory_path)) {
-		std::cout << dir_entry.path().filename().string() << "\n";
+		if (dir_entry.path().filename().string() != "Downloaded")
+			file_list.push_back(dir_entry.path().filename().string());
 	}
+	std::sort(file_list.begin(), file_list.end());
+	
+	for (auto s: file_list) std::cout << s << "\n";
 
 	config_file >> client_id >> _PORT >> unique_id >> num_immediate_neigh;
 

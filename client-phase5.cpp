@@ -79,6 +79,9 @@ int main(int argc, char** argv) {
 	for (const std::filesystem::directory_entry& dir_entry : std::filesystem::directory_iterator(directory_path)) {
 		file_list.push_back(dir_entry.path().filename().string());
 	}
+	std::sort(file_list.begin(), file_list.end());
+
+	for (auto s: file_list) std::cout << s << "\n";
 #ifdef DEBUG
 		std::cout << "=======================================\n";
 #endif
@@ -349,9 +352,7 @@ void act_as_client_depth_1() {
 
 		int server_unique_id = std::stoi(recv_buffer);
 		unique_id_to_port.insert(std::make_pair(server_unique_id, port));
-#ifdef DEBUG
-		printf("Connected to %d with unique-ID (after typecasting) %d on port %d\n", id, server_unique_id, port);
-#endif
+		printf("Connected to %d with unique-ID %d on port %d\n", id, server_unique_id, port);
 
 		recv(client_sockfd, (void*)recv_buffer, 1000, 0);
 
@@ -580,7 +581,7 @@ std::string calculate_md5(std::filesystem::path path_to_file) {
 	char command[1024] = { };
 	std::sprintf(command, "md5sum %s", path_to_file.string().c_str());
 	std::FILE* fp = popen(command, "r");
-	fgets(buf, 32, fp);
-	buf[32] = 0;
+	fgets(buf, 33, fp);
+	buf[33] = 0;
 	return std::string(buf);
 }
