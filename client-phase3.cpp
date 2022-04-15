@@ -70,7 +70,8 @@ int main(int argc, char** argv) {
 		std::cout << "List of entries in the directory: " << std::endl;
 #endif
 	for (const std::filesystem::directory_entry& dir_entry : std::filesystem::directory_iterator(directory_path)) {
-		file_list.push_back(dir_entry.path().filename().string());
+		if (dir_entry.path().filename().string() != "Downloaded")
+			file_list.push_back(dir_entry.path().filename().string());
 	}
 	std::sort(file_list.begin(), file_list.end());
 
@@ -128,7 +129,7 @@ int main(int argc, char** argv) {
 	std::cout << "=======================================\n";
 	std::cout << "Printing the Map\n";
 	std::cout << m.size() << std::endl;
-	for (auto elem: m) {
+	for (auto& elem: m) {
 		std::cout << elem.first << ": ";
 		for (auto _id : elem.second)
 			std::cout << _id << " ";
@@ -138,7 +139,7 @@ int main(int argc, char** argv) {
 #endif
 
 	// sort map according to unique id
-	for (auto elem: m) std::sort(elem.second.begin(), elem.second.end());
+	for (auto& elem: m) std::sort(elem.second.begin(), elem.second.end());
 	// sort required files lexicographically
 	std::sort(required_files.begin(), required_files.end());
 
@@ -150,10 +151,7 @@ int main(int argc, char** argv) {
 	server_thread.join();
 
 	for (auto x: required_files) {
-		if (std::find(file_list.begin(), file_list.end(), x) != file_list.end()) {
-			printf("Found %s at 0 with MD5 0 at depth 0\n", x.c_str());
-		} 
-		else if (m.find(x) != m.end()) {
+		if (m.find(x) != m.end()) {
 			std::filesystem::path path_to_file = (directory_path/"Downloaded")/x;
 			char buf[1024] = { };
 			char command[1024] = { };
@@ -163,6 +161,8 @@ int main(int argc, char** argv) {
 			buf[33] = 0;
 			printf("Found %s at %d with MD5 %s at depth 1\n", x.c_str(), m[x].front(), buf);
 		}
+		else 
+			std::printf("Found %s at 0 with MD5 0 at depth 0\n", x.c_str());
 	}
 }
 

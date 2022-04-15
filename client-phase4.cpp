@@ -67,7 +67,8 @@ int main(int argc, char** argv) {
 		std::cout << "List of entries in the directory: " << std::endl;
 #endif
 	for (const std::filesystem::directory_entry& dir_entry : std::filesystem::directory_iterator(directory_path)) {
-		file_list.push_back(dir_entry.path().filename().string());
+		if (dir_entry.path().filename().string() != "Downloaded")
+			file_list.push_back(dir_entry.path().filename().string());
 	}
 	std::sort(file_list.begin(), file_list.end());
 
@@ -144,9 +145,9 @@ int main(int argc, char** argv) {
 
 	server_thread.join();
 
-	for (auto elem: m)
+	for (auto& elem: m)
 		std::sort(elem.second.begin(), elem.second.end());
-	for (auto elem: m2)
+	for (auto& elem: m2)
 		std::sort(elem.second.begin(), elem.second.end());
 	std::sort(required_files.begin(), required_files.end());
 
@@ -154,12 +155,12 @@ int main(int argc, char** argv) {
 #ifdef DEBUG
 		std::cout << "Searching for file: " << x << ".\n";
 #endif
-		if (std::find(file_list.begin(), file_list.end(), x) != file_list.end()) 
-			std::printf("Found %s at 0 with MD5 0 at depth 0\n", x.c_str());
-		else if (m.find(x) != m.end())
+		if (m.find(x) != m.end())
 			std::printf("Found %s at %d with MD5 0 at depth 1\n", x.c_str(), m[x].front());
 		else if (m2.find(x) != m2.end())
 			std::printf("Found %s at %d with MD5 0 at depth 2\n", x.c_str(), m2[x].front());
+		else 
+			std::printf("Found %s at 0 with MD5 0 at depth 0\n", x.c_str());
 	}
 }
 

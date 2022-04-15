@@ -112,6 +112,10 @@ int main(int argc, char** argv) {
 
 	server_thread.join();
 	client_thread.join();
+
+	for (auto& elem: m)
+		std::sort(elem.second.begin(), elem.second.end());
+	std::sort(required_files.begin(), required_files.end());
 #ifdef DEBUG
 	std::cout << "=======================================\n";
 	std::cout << "Printing the Map\n";
@@ -125,18 +129,14 @@ int main(int argc, char** argv) {
 	std::cout << "=======================================\n";
 #endif
 
-	for (auto elem: m)
-		std::sort(elem.second.begin(), elem.second.end());
-	std::sort(required_files.begin(), required_files.end());
-
 	for (auto x: required_files) {
 #ifdef DEBUG
 		std::cout << "Searching for file: " << x << ".\n";
 #endif
-		if (std::find(file_list.begin(), file_list.end(), x) != file_list.end()) 
-			std::printf("Found %s at 0 with MD5 0 at depth 0\n", x.c_str());
-		else if (m.find(x) != m.end())
+		if (m.find(x) != m.end())
 				std::printf("Found %s at %d with MD5 0 at depth 1\n", x.c_str(), m[x].front());
+		else 
+			std::printf("Found %s at 0 with MD5 0 at depth 0\n", x.c_str());
 	}
 }
 
